@@ -135,12 +135,15 @@ async function analyzeDocx(event) {
   const contentType = event.headers?.['content-type'] || event.headers?.['Content-Type'] || '';
   const boundaryMatch = contentType.match(/boundary=(.+)$/);
   if (!boundaryMatch) {
-    return jsonResponse(400, { error: 'Missing multipart boundary' });
+    console.error('Missing boundary. Content-Type:', contentType);
+    return jsonResponse(400, { error: 'Missing multipart boundary. Content-Type: ' + contentType });
   }
 
   const rawBuffer = event.isBase64Encoded
     ? Buffer.from(event.body, 'base64')
     : Buffer.from(event.body || '', 'utf8');
+
+  console.log('Body length:', rawBuffer.length, 'isBase64Encoded:', event.isBase64Encoded);
 
   const boundary = Buffer.from('--' + boundaryMatch[1].trim());
   const parts = splitBuffer(rawBuffer, boundary);
@@ -156,6 +159,7 @@ async function analyzeDocx(event) {
   }
 
   if (!docxBuffer) {
+    console.error('No docx found. Parts count:', parts.length);
     return jsonResponse(400, { error: 'No .docx file found in upload' });
   }
 

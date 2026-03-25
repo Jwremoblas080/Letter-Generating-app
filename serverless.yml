@@ -11,6 +11,10 @@ provider:
   deploymentBucket:
     name: letter-generator-app-johnwhalas
     serverSideEncryption: AES256
+  apiGateway:
+    binaryMediaTypes:
+      - 'multipart/form-data'
+      - 'application/octet-stream'
   environment:
     LLM_PROVIDER: ${env:LLM_PROVIDER, 'gemini'}
     GEMINI_API_KEY: ${env:GEMINI_API_KEY, ''}
@@ -37,6 +41,8 @@ functions:
           path: /analyze-docx
           method: post
           cors: true
+          request:
+            contentHandling: CONVERT_TO_BINARY
       - http:
           path: /enhance-docx
           method: post
