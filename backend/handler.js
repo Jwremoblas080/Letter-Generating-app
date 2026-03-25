@@ -132,36 +132,50 @@ function splitBuffer(buf, delimiter) {
 }
 
 async function analyzeDocx(event) {
-  const contentType = event.headers?.['content-type'] || event.headers?.['Content-Type'] || '';
-  const boundaryMatch = contentType.match(/boundary=(.+)$/);
+  // API Gateway may lowercase headers
+  const headers = event.headers || {};
+  const contentType = headers['content-type'] || headers['Content-Type'] || '';
+
+  // Extract boundary — handle quoted and unquoted forms
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^\s;]+))/);
   if (!boundaryMatch) {
     console.error('Missing boundary. Content-Type:', contentType);
-    return jsonResponse(400, { error: 'Missing multipart boundary. Content-Type: ' + contentType });
+    return jsonResponse(400, { error: 'Missing multipart boundary. Received Content-Type: ' + contentType });
   }
 
-  const rawBuffer = event.isBase64Encoded
-    ? Buffer.from(event.body, 'base64')
-    : Buffer.from(event.body || '', 'utf8');
+  const boundaryStr = boundaryMatch[1] || boundaryMatch[2];
 
-  console.log('Body length:', rawBuffer.length, 'isBase64Encoded:', event.isBase64Encoded);
+  // API Gateway always base64-encodes binary bodies when binaryMediaTypes is set
+  let rawBuffer;
+  if (event.isBase64Encoded) {
+    rawBuffer = Buffer.from(event.body, 'base64');
+  } else {
+    rawBuffer = Buffer.from(event.body || '', 'binary');
+  }
 
-  const boundary = Buffer.from('--' + boundaryMatch[1].trim());
+  console.log('Body length:', rawBuffer.length, 'isBase64Encoded:', event.isBase64Encoded, 'boundary:', boundaryStr);
+
+  const boundary = Buffer.from('--' + boundaryStr);
   const parts = splitBuffer(rawBuffer, boundary);
 
   let docxBuffer = null;
   for (const part of parts) {
     const headerEnd = indexOfSeq(part, Buffer.from('\r\n\r\n'));
     if (headerEnd === -1) continue;
-    const headerStr = part.slice(0, headerEnd).toString();
+    const headerStr = part.slice(0, headerEnd).toString('utf8');
     if (!headerStr.includes('filename=')) continue;
-    docxBuffer = part.slice(headerEnd + 4, part.length - 2);
+    // Strip trailing \r\n from part
+    const content = part.slice(headerEnd + 4);
+    docxBuffer = content.slice(0, content.length - 2);
     break;
   }
 
-  if (!docxBuffer) {
+  if (!docxBuffer || docxBuffer.length === 0) {
     console.error('No docx found. Parts count:', parts.length);
-    return jsonResponse(400, { error: 'No .docx file found in upload' });
+    return jsonResponse(400, { error: 'No .docx file found in upload. Parts found: ' + parts.length });
   }
+
+  console.log('docxBuffer size:', docxBuffer.length);
 
   let extractedText;
   try {
