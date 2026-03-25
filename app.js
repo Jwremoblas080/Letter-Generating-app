@@ -210,7 +210,7 @@ submitBtn.addEventListener('click', async () => {
   showLoading();
 
   try {
-    const res = await fetch(`${API_BASE}/generate`, { res = await fetch(`${API_BASE}/generate`, {
+    const res = await fetch(`${API_BASE}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ letterTypeId, fields }),
