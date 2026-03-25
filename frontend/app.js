@@ -1,5 +1,8 @@
 // Professional Letter Generator — Frontend Logic
 
+// API base URL — points to deployed Lambda when set, falls back to local server
+const API_BASE = 'https://cbgis9lan3.execute-api.us-east-1.amazonaws.com/dev';
+
 let letterTypes = [];
 let currentLetterText = '';
 let currentLetterIsHtml = false;
@@ -70,7 +73,7 @@ function displayPreview(letterContent, llmEnhanced, isHtml = false) {
 // ── Load Letter Types ─────────────────────────────────────────────────────────
 async function loadLetterTypes() {
   try {
-    const res = await fetch('/letter-types');
+    const res = await fetch(`${API_BASE}/letter-types`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     letterTypes = data.letterTypes || [];
@@ -207,7 +210,7 @@ submitBtn.addEventListener('click', async () => {
   showLoading();
 
   try {
-    const res = await fetch('/generate', {
+    const res = await fetch(`${API_BASE}/generate`, { res = await fetch(`${API_BASE}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ letterTypeId, fields }),
@@ -236,7 +239,7 @@ analyzeBtn.addEventListener('click', async () => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const res = await fetch('/analyze-docx', { method: 'POST', body: formData });
+    const res = await fetch(`${API_BASE}/analyze-docx`, { method: 'POST', body: formData });
     const data = await res.json();
     if (!res.ok) { showError(data.error || 'Analysis failed.'); return; }
 
@@ -347,7 +350,7 @@ enhanceBtn.addEventListener('click', async () => {
   showLoading();
 
   try {
-    const res = await fetch('/enhance-docx', {
+    const res = await fetch(`${API_BASE}/enhance-docx`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ extractedText: docxExtractedText, fields }),
@@ -374,7 +377,7 @@ regenerateBtn.addEventListener('click', async () => {
 
   try {
     if (lastGenerateContext.type === 'template') {
-      const res = await fetch('/generate', {
+      const res = await fetch(`${API_BASE}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ letterTypeId: lastGenerateContext.letterTypeId, fields: lastGenerateContext.fields }),
@@ -383,7 +386,7 @@ regenerateBtn.addEventListener('click', async () => {
       if (!res.ok) { showError(data.error || 'Regeneration failed.'); return; }
       displayPreview(data.letterText, data.llmEnhanced, false);
     } else if (lastGenerateContext.type === 'docx') {
-      const res = await fetch('/enhance-docx', {
+      const res = await fetch(`${API_BASE}/enhance-docx`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ extractedText: lastGenerateContext.extractedText, fields: lastGenerateContext.fields }),
@@ -415,7 +418,7 @@ copyBtn.addEventListener('click', async () => {
 
 downloadBtn.addEventListener('click', async () => {
   try {
-    const res = await fetch('/download-pdf', {
+    const res = await fetch(`${API_BASE}/download-pdf`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ letterText: currentLetterText, isHtml: currentLetterIsHtml }),
