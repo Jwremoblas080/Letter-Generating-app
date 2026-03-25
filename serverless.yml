@@ -8,6 +8,9 @@ provider:
   region: ap-southeast-1
   memorySize: 512
   timeout: 30
+  deploymentBucket:
+    name: letter-generator-app-johnwhalas
+    serverSideEncryption: AES256
   environment:
     LLM_PROVIDER: ${env:LLM_PROVIDER, 'gemini'}
     GEMINI_API_KEY: ${env:GEMINI_API_KEY, ''}
