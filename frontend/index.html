@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Letter Generator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <h1>📝 Professional Letter Generator</h1>
+      <p class="subtitle">Create polished, AI-enhanced business letters in seconds</p>
+    </header>
+
+    <main class="main-content">
+      <!-- Upload Section -->
+      <section class="card upload-card">
+        <div class="card-header">
+          <h2>📄 Upload Your Document</h2>
+          <p>Upload a .docx file and let AI analyze and enhance it</p>
+        </div>
+        <div class="upload-area">
+          <input type="file" id="docx-upload" accept=".docx" />
+          <button id="analyze-btn" type="button" class="btn btn-primary">
+            <span class="btn-icon">🔍</span> Analyze Document
+          </button>
+        </div>
+      </section>
+
+      <div class="divider">
+        <span>or</span>
+      </div>
+
+      <!-- Template Section -->
+      <section class="card template-card">
+        <div class="card-header">
+          <h2>📋 Use a Template</h2>
+          <p>Choose from pre-built professional letter templates</p>
+        </div>
+        <div class="template-selector">
+          <select id="letter-type-select" class="select-input">
+            <option value="">-- Select a letter type --</option>
+          </select>
+          <button id="open-form-btn" type="button" class="btn btn-secondary" disabled>
+            <span class="btn-icon">✏️</span> Fill Form
+          </button>
+        </div>
+      </section>
+
+      <!-- Preview Section (initially hidden) -->
+      <section id="preview-section" class="card preview-card" style="display:none">
+        <div class="card-header">
+          <h2>✨ Letter Preview</h2>
+          <div id="llm-notice" class="notice notice-warning" style="display:none">
+            <span class="notice-icon">⚠️</span>
+            AI enhancement was unavailable. Letter generated from template directly.
+          </div>
+        </div>
+        <div id="preview-text" class="preview-content"></div>
+        <div class="preview-actions">
+          <button id="copy-btn" type="button" class="btn btn-outline">
+            <span class="btn-icon">📋</span> Copy
+          </button>
+          <button id="download-btn" type="button" class="btn btn-outline">
+            <span class="btn-icon">⬇️</span> Download PDF
+          </button>
+          <button id="regenerate-btn" type="button" class="btn btn-outline">
+            <span class="btn-icon">🔄</span> Regenerate
+          </button>
+        </div>
+        <div id="copy-confirmation" class="notice notice-success" style="display:none">
+          <span class="notice-icon">✅</span> Copied to clipboard!
+        </div>
+      </section>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display:none">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Processing your request...</p>
+    </div>
+
+    <!-- Error Toast -->
+    <div id="error-toast" class="toast toast-error" style="display:none">
+      <span class="toast-icon">❌</span>
+      <span id="error-msg"></span>
+    </div>
+  </div>
+
+  <!-- Modal: Template Form -->
+  <div id="form-modal" class="modal" style="display:none">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Fill Letter Details</h3>
+        <button id="close-modal-btn" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="letter-form">
+          <div id="form-container"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="cancel-btn" type="button" class="btn btn-outline">Cancel</button>
+        <button id="submit-btn" type="button" class="btn btn-primary">
+          <span class="btn-icon">✨</span> Generate Letter
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Docx Fields -->
+  <div id="docx-modal" class="modal" style="display:none">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Complete Your Letter</h3>
+        <button id="close-docx-modal-btn" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">AI detected the following information needed for your letter. Fill in what applies:</p>
+        <form id="docx-form">
+          <div id="docx-fields"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="cancel-docx-btn" type="button" class="btn btn-outline">Cancel</button>
+        <button id="enhance-btn" type="button" class="btn btn-primary">
+          <span class="btn-icon">✨</span> Generate Enhanced Letter
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

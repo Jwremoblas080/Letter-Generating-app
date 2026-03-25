@@ -1,0 +1,25 @@
+{
+  "name": "letter-generator-backend",
+  "version": "1.0.0",
+  "description": "Letter Generator App — AWS Lambda backend",
+  "main": "handler.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "jest",
+    "deploy": "cd .. && serverless deploy",
+    "deploy:prod": "cd .. && serverless deploy --stage prod",
+    "offline": "cd .. && serverless offline"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "fast-check": "^3.22.0",
+    "html-pdf-node": "^1.0.8",
+    "mammoth": "^1.8.0",
+    "multer": "^1.4.5-lts.1",
+    "pdfkit": "^0.15.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "serverless-offline": "^13.3.3"
+  }
+}
