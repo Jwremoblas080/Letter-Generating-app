@@ -418,6 +418,7 @@ copyBtn.addEventListener('click', async () => {
 
 downloadBtn.addEventListener('click', async () => {
   try {
+    showLoading();
     const res = await fetch(`${API_BASE}/download-pdf`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -428,7 +429,20 @@ downloadBtn.addEventListener('click', async () => {
       showError(data.error || 'PDF generation failed.');
       return;
     }
-    const blob = await res.blob();
+
+    const contentType = res.headers.get('content-type') || '';
+    let blob;
+    if (contentType.includes('application/json')) {
+      const data = await res.json();
+      const base64 = data.body || data;
+      const binary = atob(typeof base64 === 'string' ? base64 : '');
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      blob = new Blob([bytes], { type: 'application/pdf' });
+    } else {
+      blob = await res.blob();
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -437,6 +451,8 @@ downloadBtn.addEventListener('click', async () => {
     URL.revokeObjectURL(url);
   } catch (err) {
     showError('Network error: ' + err.message);
+  } finally {
+    hideLoading();
   }
 });
 
