@@ -1,0 +1,14 @@
+{
+  "name": "letter-generator-app",
+  "version": "1.0.0",
+  "description": "A professional letter generation web app powered by AI (Google Gemini / Groq).",
+  "scripts": {
+    "deploy": "serverless deploy",
+    "deploy:prod": "serverless deploy --stage prod",
+    "offline": "serverless offline",
+    "install:backend": "cd backend && npm install"
+  },
+  "devDependencies": {
+    "serverless-offline": "^14.5.0"
+  }
+}
