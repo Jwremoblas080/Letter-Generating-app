@@ -92,7 +92,7 @@
           </div>
         </div>
         <div id="preview-text" class="preview-content"></div>
-        <div class="preview-actions">
+        <div class="preview-actions" id="preview-actions">
           <button id="copy-btn" type="button" class="btn btn-outline">
             <span class="btn-icon">📋</span> Copy
           </button>
@@ -105,6 +105,18 @@
         </div>
         <div id="copy-confirmation" class="notice notice-success" style="display:none">
           <span class="notice-icon">✅</span> Copied to clipboard!
+        </div>
+      </section>
+
+      <!-- Empty State -->
+      <section id="empty-state" class="card empty-state-card">
+        <div class="empty-state-icon">📝</div>
+        <h3 class="empty-state-title">Your letter will appear here</h3>
+        <p class="empty-state-desc">Upload a .docx template or choose a letter type above, fill in the details, and your AI-enhanced letter will be ready to preview, copy, or download as PDF.</p>
+        <div class="empty-state-steps">
+          <div class="empty-step"><span class="empty-step-num">1</span><span>Choose a method above</span></div>
+          <div class="empty-step"><span class="empty-step-num">2</span><span>Fill in your details</span></div>
+          <div class="empty-step"><span class="empty-step-num">3</span><span>Preview & download</span></div>
         </div>
       </section>
     </main>
@@ -125,6 +137,19 @@
     <div id="success-toast" class="toast toast-success" style="display:none">
       <span class="toast-icon">✅</span>
       <span id="success-msg"></span>
+    </div>
+
+    <!-- Mobile Sticky Action Bar -->
+    <div id="mobile-action-bar" class="mobile-action-bar" style="display:none">
+      <button id="mobile-copy-btn" type="button" class="mobile-action-btn">
+        <span>📋</span><span>Copy</span>
+      </button>
+      <button id="mobile-download-btn" type="button" class="mobile-action-btn mobile-action-primary">
+        <span>⬇️</span><span>Download PDF</span>
+      </button>
+      <button id="mobile-regenerate-btn" type="button" class="mobile-action-btn">
+        <span>🔄</span><span>Regenerate</span>
+      </button>
     </div>
   </div>
 

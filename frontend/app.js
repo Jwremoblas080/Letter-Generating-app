@@ -47,6 +47,11 @@ const errorToast = document.getElementById('error-toast');
 const errorMsg = document.getElementById('error-msg');
 const successToast = document.getElementById('success-toast');
 const successMsg = document.getElementById('success-msg');
+const emptyState = document.getElementById('empty-state');
+const mobileActionBar = document.getElementById('mobile-action-bar');
+const mobileCopyBtn = document.getElementById('mobile-copy-btn');
+const mobileDownloadBtn = document.getElementById('mobile-download-btn');
+const mobileRegenerateBtn = document.getElementById('mobile-regenerate-btn');
 
 // ── Step Indicator ────────────────────────────────────────────────────────────
 function setStep(step) {
@@ -93,17 +98,12 @@ function closeModal(modal) { modal.style.display = 'none'; }
 function displayPreview(letterContent, llmEnhanced, isHtml = false) {
   currentLetterText = letterContent;
   currentLetterIsHtml = isHtml;
-
-  if (isHtml) {
-    previewText.innerHTML = letterContent;
-    previewText.classList.remove('plain');
-  } else {
-    previewText.textContent = letterContent;
-    previewText.classList.add('plain');
-  }
-
+  if (isHtml) { previewText.innerHTML = letterContent; previewText.classList.remove('plain'); }
+  else { previewText.textContent = letterContent; previewText.classList.add('plain'); }
   llmNotice.style.display = llmEnhanced === false ? '' : 'none';
   previewSection.style.display = '';
+  if (emptyState) emptyState.style.display = 'none';
+  if (mobileActionBar) mobileActionBar.style.display = 'flex';
   previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   setStep(3);
   showSuccess(llmEnhanced ? '✨ Letter generated with AI enhancement!' : '📄 Letter generated from template.');
@@ -186,7 +186,6 @@ letterTypeSelect.addEventListener('change', () => {
 openFormBtn.addEventListener('click', () => {
   const letterTypeId = letterTypeSelect.value;
   if (!letterTypeId) return;
-
   const lt = letterTypes.find(t => t.id === letterTypeId);
   if (!lt) return;
 
@@ -194,80 +193,64 @@ openFormBtn.addEventListener('click', () => {
   formContainer.innerHTML = '';
   setStep(2);
 
+  const totalRequired = lt.fields.filter(f => f.required).length;
+
+  // Progress counter
+  const progressBar = document.createElement('div');
+  progressBar.className = 'form-progress';
+  progressBar.innerHTML = `<div class="form-progress-text"><span id="form-progress-count">0</span> of <span>${totalRequired}</span> required fields completed</div><div class="form-progress-track"><div class="form-progress-fill" id="form-progress-fill" style="width:0%"></div></div>`;
+  formContainer.appendChild(progressBar);
+
+  function updateProgress() {
+    const inputs = formContainer.querySelectorAll('input[name], textarea[name]');
+    let filled = 0;
+    inputs.forEach(inp => { if (inp.dataset.required === 'true' && inp.value.trim()) filled++; });
+    const pct = totalRequired > 0 ? Math.round((filled / totalRequired) * 100) : 0;
+    const countEl = document.getElementById('form-progress-count');
+    const fillEl = document.getElementById('form-progress-fill');
+    if (countEl) countEl.textContent = filled;
+    if (fillEl) { fillEl.style.width = pct + '%'; fillEl.className = 'form-progress-fill' + (pct === 100 ? ' complete' : ''); }
+  }
+
   lt.fields.forEach(field => {
     const div = document.createElement('div');
     div.className = 'field-group';
-
     const label = document.createElement('label');
     label.htmlFor = `field-${field.key}`;
     label.textContent = field.label;
-    if (field.required) {
-      const mark = document.createElement('span');
-      mark.className = 'required-mark';
-      mark.textContent = ' *';
-      label.appendChild(mark);
-    }
+    if (field.required) { const mark = document.createElement('span'); mark.className = 'required-mark'; mark.textContent = ' *'; label.appendChild(mark); }
 
-    // Smart input type detection
     let input;
     const fieldKey = field.key.toLowerCase();
     const fieldLabel = field.label.toLowerCase();
-    
-    // Textarea for long text fields
-    if (fieldKey.includes('description') || fieldKey.includes('additional') || fieldKey.includes('request')) {
-      input = document.createElement('textarea');
-      input.rows = 4;
-      input.placeholder = `Enter ${field.label.toLowerCase()}...`;
-    } 
-    // Date picker for date fields
-    else if (fieldKey.includes('date') || fieldLabel.includes('date')) {
-      input = document.createElement('input');
-      input.type = 'date';
-    } 
-    // Time picker for time fields
-    else if (fieldKey.includes('time') || fieldLabel.includes('time')) {
-      input = document.createElement('input');
-      input.type = 'time';
-    } 
-    // Email input for email/contact fields
-    else if (fieldKey.includes('email') || fieldLabel.includes('email')) {
-      input = document.createElement('input');
-      input.type = 'email';
-      input.placeholder = 'example@email.com';
-    } 
-    // Tel input for phone fields
-    else if (fieldKey.includes('phone') || fieldLabel.includes('phone')) {
-      input = document.createElement('input');
-      input.type = 'tel';
-      input.placeholder = '+1 (555) 123-4567';
-    } 
-    // Number input for participant/quantity fields
-    else if (fieldKey.includes('participant') || fieldKey.includes('expected') || fieldKey.includes('quantity')) {
-      input = document.createElement('input');
-      input.type = 'number';
-      input.min = '1';
-      input.placeholder = 'Enter number';
-    } 
-    // URL input for website fields
-    else if (fieldKey.includes('website') || fieldKey.includes('url') || fieldKey.includes('link')) {
-      input = document.createElement('input');
-      input.type = 'url';
-      input.placeholder = 'https://example.com';
-    } 
-    // Default text input
-    else {
-      input = document.createElement('input');
-      input.type = 'text';
-      input.placeholder = `Enter ${field.label.toLowerCase()}`;
-    }
-    
+    const isTextarea = fieldKey.includes('description') || fieldKey.includes('additional') || fieldKey.includes('request');
+
+    if (isTextarea) { input = document.createElement('textarea'); input.rows = 4; input.placeholder = `Enter ${field.label.toLowerCase()}...`; }
+    else if (fieldKey.includes('date') || fieldLabel.includes('date')) { input = document.createElement('input'); input.type = 'date'; }
+    else if (fieldKey.includes('time') || fieldLabel.includes('time')) { input = document.createElement('input'); input.type = 'time'; }
+    else if (fieldKey.includes('email') || fieldLabel.includes('email')) { input = document.createElement('input'); input.type = 'email'; input.placeholder = 'example@email.com'; }
+    else if (fieldKey.includes('phone') || fieldLabel.includes('phone')) { input = document.createElement('input'); input.type = 'tel'; input.placeholder = '+1 (555) 123-4567'; }
+    else if (fieldKey.includes('participant') || fieldKey.includes('expected') || fieldKey.includes('quantity')) { input = document.createElement('input'); input.type = 'number'; input.min = '1'; input.placeholder = 'Enter number'; }
+    else if (fieldKey.includes('website') || fieldKey.includes('url') || fieldKey.includes('link')) { input = document.createElement('input'); input.type = 'url'; input.placeholder = 'https://example.com'; }
+    else { input = document.createElement('input'); input.type = 'text'; input.placeholder = `Enter ${field.label.toLowerCase()}`; }
+
     input.id = `field-${field.key}`;
     input.name = field.key;
     input.dataset.required = field.required ? 'true' : 'false';
     input.dataset.label = field.label;
+    input.addEventListener('input', updateProgress);
 
     div.appendChild(label);
     div.appendChild(input);
+
+    if (isTextarea) {
+      const counter = document.createElement('div');
+      counter.className = 'char-counter';
+      counter.textContent = '0 characters';
+      input.addEventListener('input', () => { const l = input.value.length; counter.textContent = `${l} character${l !== 1 ? 's' : ''}`; });
+      div.appendChild(counter);
+    }
+
     formContainer.appendChild(div);
   });
 
@@ -546,5 +529,9 @@ downloadBtn.addEventListener('click', async () => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+if (mobileCopyBtn) mobileCopyBtn.addEventListener('click', () => copyBtn.click());
+if (mobileDownloadBtn) mobileDownloadBtn.addEventListener('click', () => downloadBtn.click());
+if (mobileRegenerateBtn) mobileRegenerateBtn.addEventListener('click', () => regenerateBtn.click());
+
 setStep(1);
 loadLetterTypes();
