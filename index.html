@@ -92,6 +92,15 @@
           </div>
         </div>
         <div id="preview-text" class="preview-content"></div>
+
+        <!-- Edit Letter Bar -->
+        <div class="edit-bar">
+          <input type="text" id="edit-instruction" class="edit-input" placeholder='e.g. "make it shorter", "make it more formal"' />
+          <button id="edit-btn" type="button" class="btn btn-secondary">
+            <span class="btn-icon">✏️</span> Edit with AI
+          </button>
+        </div>
+
         <div class="preview-actions" id="preview-actions">
           <button id="copy-btn" type="button" class="btn btn-outline">
             <span class="btn-icon">📋</span> Copy
@@ -117,6 +126,16 @@
           <div class="empty-step"><span class="empty-step-num">1</span><span>Choose a method above</span></div>
           <div class="empty-step"><span class="empty-step-num">2</span><span>Fill in your details</span></div>
           <div class="empty-step"><span class="empty-step-num">3</span><span>Preview & download</span></div>
+        </div>
+      </section>
+      <!-- Letter History Section -->
+      <section id="history-section" class="card history-card">
+        <div class="card-header history-header">
+          <h2>🕐 Letter History</h2>
+          <button id="refresh-history-btn" class="btn btn-outline btn-sm">↻ Refresh</button>
+        </div>
+        <div id="history-list" class="history-list">
+          <p class="history-empty">No letters generated yet. Create your first letter above!</p>
         </div>
       </section>
     </main>

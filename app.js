@@ -34,12 +34,16 @@ const enhanceBtn = document.getElementById('enhance-btn');
 
 const previewSection = document.getElementById('preview-section');
 const previewText = document.getElementById('preview-text');
+const editInstruction = document.getElementById('edit-instruction');
+const editBtn = document.getElementById('edit-btn');
 const copyBtn = document.getElementById('copy-btn');
 const downloadBtn = document.getElementById('download-btn');
 const downloadBtnText = document.getElementById('download-btn-text');
 const regenerateBtn = document.getElementById('regenerate-btn');
 const copyConfirmation = document.getElementById('copy-confirmation');
 const llmNotice = document.getElementById('llm-notice');
+const historyList = document.getElementById('history-list');
+const refreshHistoryBtn = document.getElementById('refresh-history-btn');
 
 const loadingOverlay = document.getElementById('loading-overlay');
 const loadingText = document.getElementById('loading-text');
@@ -107,7 +111,69 @@ function displayPreview(letterContent, llmEnhanced, isHtml = false) {
   previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   setStep(3);
   showSuccess(llmEnhanced ? '✨ Letter generated with AI enhancement!' : '📄 Letter generated from template.');
+  loadHistory();
 }
+
+// ── Edit Letter ───────────────────────────────────────────────────────────────
+editBtn.addEventListener('click', async () => {
+  const instruction = editInstruction.value.trim();
+  if (!instruction) { showError('Please enter an edit instruction, e.g. "make it shorter".'); return; }
+  if (!currentLetterText) { showError('No letter to edit. Generate a letter first.'); return; }
+
+  showLoading('✏️ Editing your letter...');
+  try {
+    const res = await fetch(`${API_BASE}/edit-letter`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ letterText: currentLetterText, instruction }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error || 'Edit failed.'); return; }
+    displayPreview(data.letterText, true, currentLetterIsHtml);
+    editInstruction.value = '';
+    showSuccess('✏️ Letter updated!');
+  } catch (err) {
+    showError('Network error: ' + err.message);
+  } finally {
+    hideLoading();
+  }
+});
+
+editInstruction.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') editBtn.click();
+});
+
+// ── Letter History ────────────────────────────────────────────────────────────
+async function loadHistory() {
+  if (!historyList) return;
+  try {
+    const res = await fetch(`${API_BASE}/letters`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const letters = data.letters || [];
+    if (letters.length === 0) {
+      historyList.innerHTML = '<p class="history-empty">No letters generated yet. Create your first letter above!</p>';
+      return;
+    }
+    historyList.innerHTML = '';
+    letters.slice(0, 10).forEach(letter => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      const date = new Date(letter.createdAt).toLocaleString();
+      const typeLabel = letter.letterTypeId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      item.innerHTML = `
+        <div class="history-item-info">
+          <span class="history-item-type">📄 ${typeLabel}</span>
+          <span class="history-item-date">${date}</span>
+        </div>`;
+      historyList.appendChild(item);
+    });
+  } catch {
+    if (historyList) historyList.innerHTML = '<p class="history-empty">Could not load history.</p>';
+  }
+}
+
+if (refreshHistoryBtn) refreshHistoryBtn.addEventListener('click', loadHistory);
 
 // ── Drag & Drop Upload Zone ───────────────────────────────────────────────────
 function setFileSelected(file) {
@@ -535,3 +601,4 @@ if (mobileRegenerateBtn) mobileRegenerateBtn.addEventListener('click', () => reg
 
 setStep(1);
 loadLetterTypes();
+loadHistory();
