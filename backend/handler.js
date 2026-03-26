@@ -96,14 +96,14 @@ async function downloadPdf(body) {
 
   const pdfBuffer = await pdfGenerator.generate(letterText, isHtml);
 
+  // Return as base64 inside JSON — avoids API Gateway binary encoding issues
   return {
     statusCode: 200,
-    headers: corsHeaders({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="letter.pdf"',
+    headers: corsHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({
+      pdf: pdfBuffer.toString('base64'),
+      filename: 'letter.pdf',
     }),
-    body: pdfBuffer.toString('base64'),
-    isBase64Encoded: true,
   };
 }
 
