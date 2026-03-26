@@ -75,10 +75,11 @@ function listLetterTypes() {
 async function listLetters() {
   try {
     const letters = await storage.list();
-    return jsonResponse(200, { letters });
+    return jsonResponse(200, { letters: letters || [] });
   } catch (err) {
     console.error('listLetters error:', err.message);
-    return jsonResponse(500, { error: 'Failed to retrieve letter history.' });
+    // Return empty history instead of 500 — history is non-critical
+    return jsonResponse(200, { letters: [] });
   }
 }
 
