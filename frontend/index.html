@@ -9,8 +9,8 @@
 <body>
   <div id="app">
     <header class="app-header">
-      <h1>📝 Professional Letter Generator</h1>
-      <p class="subtitle">Create polished, AI-enhanced business letters in seconds</p>
+      <h1>Letter Generator</h1>
+      <p class="subtitle">AI-enhanced professional letters — ready in seconds</p>
     </header>
 
     <!-- Step Indicator -->
@@ -35,21 +35,20 @@
       <!-- Upload Section -->
       <section class="card upload-card">
         <div class="card-header">
-          <h2>📄 Upload Your Document</h2>
+          <h2>Upload Document</h2>
           <p>Upload a .docx file and let AI analyze and fill in the placeholders</p>
         </div>
 
-        <!-- Drag & Drop Zone -->
         <div class="drop-zone" id="drop-zone">
           <div class="drop-zone-idle" id="drop-zone-idle">
-            <div class="drop-zone-icon">📂</div>
+            <div class="drop-zone-icon">↑</div>
             <p class="drop-zone-title">Drag & drop your .docx file here</p>
             <p class="drop-zone-sub">or click to browse</p>
             <input type="file" id="docx-upload" accept=".docx" />
           </div>
           <div class="drop-zone-selected" id="drop-zone-selected" style="display:none">
             <div class="file-info">
-              <span class="file-icon">📄</span>
+              <span class="file-icon">◻</span>
               <span class="file-name" id="file-name-display"></span>
               <button class="file-remove-btn" id="file-remove-btn" title="Remove file">✕</button>
             </div>
@@ -59,7 +58,7 @@
 
         <div class="upload-actions">
           <button id="analyze-btn" type="button" class="btn btn-primary" disabled>
-            <span class="btn-icon">🔍</span> Analyze Document
+            Analyze Document
           </button>
         </div>
       </section>
@@ -69,15 +68,15 @@
       <!-- Template Section -->
       <section class="card template-card">
         <div class="card-header">
-          <h2>📋 Use a Template</h2>
+          <h2>Use a Template</h2>
           <p>Choose from pre-built professional letter templates</p>
         </div>
         <div class="template-selector">
           <select id="letter-type-select" class="select-input">
-            <option value="">-- Select a letter type --</option>
+            <option value="">— Select a letter type —</option>
           </select>
           <button id="open-form-btn" type="button" class="btn btn-secondary" disabled>
-            <span class="btn-icon">✏️</span> Fill Form
+            Fill Form
           </button>
         </div>
       </section>
@@ -85,57 +84,53 @@
       <!-- Preview Section (initially hidden) -->
       <section id="preview-section" class="card preview-card" style="display:none">
         <div class="card-header">
-          <h2>✨ Letter Preview</h2>
+          <h2>Preview</h2>
           <div id="llm-notice" class="notice notice-warning" style="display:none">
-            <span class="notice-icon">⚠️</span>
+            <span class="notice-icon">—</span>
             AI enhancement was unavailable. Letter generated from template directly.
           </div>
         </div>
         <div id="preview-text" class="preview-content"></div>
 
-        <!-- Edit Letter Bar -->
         <div class="edit-bar">
           <input type="text" id="edit-instruction" class="edit-input" placeholder='e.g. "make it shorter", "make it more formal"' />
           <button id="edit-btn" type="button" class="btn btn-secondary">
-            <span class="btn-icon">✏️</span> Edit with AI
+            Edit with AI
           </button>
         </div>
 
         <div class="preview-actions" id="preview-actions">
-          <button id="copy-btn" type="button" class="btn btn-outline">
-            <span class="btn-icon">📋</span> Copy
-          </button>
+          <button id="copy-btn" type="button" class="btn btn-outline">Copy</button>
           <button id="download-btn" type="button" class="btn btn-outline">
-            <span class="btn-icon">⬇️</span> <span id="download-btn-text">Download PDF</span>
+            <span id="download-btn-text">Download PDF</span>
           </button>
-          <button id="regenerate-btn" type="button" class="btn btn-outline">
-            <span class="btn-icon">🔄</span> Regenerate
-          </button>
+          <button id="regenerate-btn" type="button" class="btn btn-outline">Regenerate</button>
         </div>
         <div id="copy-confirmation" class="notice notice-success" style="display:none">
-          <span class="notice-icon">✅</span> Copied to clipboard!
+          <span class="notice-icon">✓</span> Copied to clipboard.
         </div>
       </section>
 
       <!-- Empty State -->
       <section id="empty-state" class="card empty-state-card">
-        <div class="empty-state-icon">📝</div>
+        <div class="empty-state-icon">✦</div>
         <h3 class="empty-state-title">Your letter will appear here</h3>
-        <p class="empty-state-desc">Upload a .docx template or choose a letter type above, fill in the details, and your AI-enhanced letter will be ready to preview, copy, or download as PDF.</p>
+        <p class="empty-state-desc">Upload a .docx template or choose a letter type above, fill in the details, and your AI-enhanced letter will be ready to preview, copy, or download.</p>
         <div class="empty-state-steps">
-          <div class="empty-step"><span class="empty-step-num">1</span><span>Choose a method above</span></div>
-          <div class="empty-step"><span class="empty-step-num">2</span><span>Fill in your details</span></div>
+          <div class="empty-step"><span class="empty-step-num">1</span><span>Choose a method</span></div>
+          <div class="empty-step"><span class="empty-step-num">2</span><span>Fill in details</span></div>
           <div class="empty-step"><span class="empty-step-num">3</span><span>Preview & download</span></div>
         </div>
       </section>
+
       <!-- Letter History Section -->
       <section id="history-section" class="card history-card">
         <div class="card-header history-header">
-          <h2>🕐 Letter History</h2>
+          <h2>History</h2>
           <button id="refresh-history-btn" class="btn btn-outline btn-sm">↻ Refresh</button>
         </div>
         <div id="history-list" class="history-list">
-          <p class="history-empty">No letters generated yet. Create your first letter above!</p>
+          <p class="history-empty">No letters generated yet.</p>
         </div>
       </section>
     </main>
@@ -148,26 +143,26 @@
 
     <!-- Error Toast -->
     <div id="error-toast" class="toast toast-error" style="display:none">
-      <span class="toast-icon">❌</span>
+      <span class="toast-icon">—</span>
       <span id="error-msg"></span>
     </div>
 
     <!-- Success Toast -->
     <div id="success-toast" class="toast toast-success" style="display:none">
-      <span class="toast-icon">✅</span>
+      <span class="toast-icon">✓</span>
       <span id="success-msg"></span>
     </div>
 
     <!-- Mobile Sticky Action Bar -->
     <div id="mobile-action-bar" class="mobile-action-bar" style="display:none">
       <button id="mobile-copy-btn" type="button" class="mobile-action-btn">
-        <span>📋</span><span>Copy</span>
+        <span>⎘</span><span>Copy</span>
       </button>
       <button id="mobile-download-btn" type="button" class="mobile-action-btn mobile-action-primary">
-        <span>⬇️</span><span>Download PDF</span>
+        <span>↓</span><span>Download</span>
       </button>
       <button id="mobile-regenerate-btn" type="button" class="mobile-action-btn">
-        <span>🔄</span><span>Regenerate</span>
+        <span>↺</span><span>Redo</span>
       </button>
     </div>
   </div>
@@ -188,7 +183,7 @@
       <div class="modal-footer">
         <button id="cancel-btn" type="button" class="btn btn-outline">Cancel</button>
         <button id="submit-btn" type="button" class="btn btn-primary">
-          <span class="btn-icon">✨</span> Generate Letter
+          Generate Letter
         </button>
       </div>
     </div>
@@ -203,7 +198,7 @@
         <button id="close-docx-modal-btn" class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="modal-hint">AI detected the following information needed for your letter. Fill in what applies:</p>
+        <p class="modal-hint">AI detected the following fields needed for your letter. Fill in what applies:</p>
         <form id="docx-form">
           <div id="docx-fields"></div>
         </form>
@@ -211,7 +206,7 @@
       <div class="modal-footer">
         <button id="cancel-docx-btn" type="button" class="btn btn-outline">Cancel</button>
         <button id="enhance-btn" type="button" class="btn btn-primary">
-          <span class="btn-icon">✨</span> Generate Enhanced Letter
+          Generate Enhanced Letter
         </button>
       </div>
     </div>
