@@ -594,6 +594,27 @@ downloadBtn.addEventListener('click', async () => {
   }
 });
 
+// ── Dark Mode ─────────────────────────────────────────────────────────────────
+const themeToggle = document.getElementById('theme-toggle');
+const themeKnob = themeToggle ? themeToggle.querySelector('.theme-toggle-knob') : null;
+
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  if (themeKnob) themeKnob.textContent = dark ? '☾' : '☀';
+}
+
+const savedTheme = localStorage.getItem('theme');
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+applyTheme(savedTheme ? savedTheme === 'dark' : prefersDark);
+
+if (themeToggle) {
+  themeToggle.addEventListener('click', () => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    applyTheme(!isDark);
+    localStorage.setItem('theme', !isDark ? 'dark' : 'light');
+  });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 if (mobileCopyBtn) mobileCopyBtn.addEventListener('click', () => copyBtn.click());
 if (mobileDownloadBtn) mobileDownloadBtn.addEventListener('click', () => downloadBtn.click());

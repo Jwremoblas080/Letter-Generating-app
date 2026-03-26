@@ -17,6 +17,21 @@
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.10);
 }
 
+[data-theme="dark"] {
+  --black: #f0f0f0;
+  --white: #111111;
+  --gray-50: #1a1a1a;
+  --gray-100: #222222;
+  --gray-200: #333333;
+  --gray-300: #555555;
+  --gray-500: #888888;
+  --gray-700: #bbbbbb;
+  --accent: #f0f0f0;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow: 0 2px 8px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -43,7 +58,13 @@ body {
   margin-bottom: 4rem;
   padding-bottom: 2.5rem;
   border-bottom: 1.5px solid var(--black);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
 }
+
+.app-header-text { flex: 1; }
 
 .app-header h1 {
   font-family: 'DM Serif Display', serif;
@@ -53,6 +74,43 @@ body {
   letter-spacing: -0.03em;
   margin-bottom: 0.4rem;
   line-height: 1.1;
+}
+
+/* ── Dark Mode Toggle ────────────────────────────────────────────────────── */
+.theme-toggle {
+  background: none;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 99px;
+  width: 44px;
+  height: 26px;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  margin-top: 0.5rem;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.theme-toggle:hover { border-color: var(--black); }
+
+.theme-toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gray-300);
+  transition: transform 0.22s ease, background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+}
+
+[data-theme="dark"] .theme-toggle-knob {
+  transform: translateX(18px);
+  background: var(--gray-700);
 }
 
 .subtitle {
@@ -683,6 +741,10 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 2000;
+}
+
+[data-theme="dark"] .loading-overlay {
+  background: rgba(17,17,17,0.92);
 }
 
 .loading-spinner {
