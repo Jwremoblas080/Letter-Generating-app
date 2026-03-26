@@ -7,6 +7,10 @@ const pdfGenerator = require('./pdfGenerator');
 const storage = require('./storage');
 const mammoth = require('mammoth');
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+const MAX_FIELD_LENGTH = 2000;
+const MAX_TEXT_LENGTH  = 50000;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function corsHeaders(extra = {}) {
@@ -38,6 +42,25 @@ function parseBody(event) {
   }
 }
 
+function sanitize(value) {
+  if (typeof value !== 'string') return String(value ?? '');
+  return value.replace(/<[^>]*>/g, '').replace(/javascript:/gi, '').trim();
+}
+
+function validateFields(fields) {
+  const sanitized = {};
+  const errors = [];
+  for (const [key, value] of Object.entries(fields)) {
+    const clean = sanitize(value);
+    if (clean.length > MAX_FIELD_LENGTH) {
+      errors.push(`Field "${key}" exceeds ${MAX_FIELD_LENGTH} characters.`);
+    } else {
+      sanitized[key] = clean;
+    }
+  }
+  return { ok: errors.length === 0, fields: sanitized, errors };
+}
+
 // ── Route: GET /letter-types ──────────────────────────────────────────────────
 
 function listLetterTypes() {
@@ -45,6 +68,18 @@ function listLetterTypes() {
     id, displayName, fields,
   }));
   return jsonResponse(200, { letterTypes });
+}
+
+// ── Route: GET /letters ───────────────────────────────────────────────────────
+
+async function listLetters() {
+  try {
+    const letters = await storage.list();
+    return jsonResponse(200, { letters });
+  } catch (err) {
+    console.error('listLetters error:', err.message);
+    return jsonResponse(500, { error: 'Failed to retrieve letter history.' });
+  }
 }
 
 // ── Route: POST /generate ─────────────────────────────────────────────────────
@@ -58,18 +93,26 @@ async function generateLetter(body) {
 
   const letterType = registry.getById(letterTypeId);
   if (!letterType) {
-    return jsonResponse(400, { error: `Unknown letter type: ${letterTypeId}` });
+    return jsonResponse(400, { error: `Unknown letter type: "${letterTypeId}". Call GET /letter-types to see valid options.` });
   }
+
+  const validation = validateFields(fields);
+  if (!validation.ok) {
+    return jsonResponse(400, { error: validation.errors.join(' ') });
+  }
+  const sanitizedFields = validation.fields;
 
   const missingFields = letterType.fields
-    .filter((f) => f.required && (!fields[f.key] || !String(fields[f.key]).trim()))
-    .map((f) => f.key);
+    .filter((f) => f.required && (!sanitizedFields[f.key] || !sanitizedFields[f.key].trim()))
+    .map((f) => f.label);
 
   if (missingFields.length > 0) {
-    return jsonResponse(400, { error: `Missing required fields: ${missingFields.join(', ')}` });
+    return jsonResponse(400, {
+      error: `Please fill in the following required fields: ${missingFields.join(', ')}.`,
+    });
   }
 
-  const renderResult = templateEngine.render(letterType.template, fields);
+  const renderResult = templateEngine.render(letterType.template, sanitizedFields);
   if (!renderResult.ok) {
     return jsonResponse(400, { error: `Unresolved placeholders: ${renderResult.missingKeys.join(', ')}` });
   }
@@ -93,18 +136,53 @@ async function downloadPdf(body) {
   if (!letterText) {
     return jsonResponse(400, { error: 'Missing required parameter: letterText' });
   }
+  if (letterText.length > MAX_TEXT_LENGTH) {
+    return jsonResponse(400, { error: `Letter text exceeds maximum length of ${MAX_TEXT_LENGTH} characters.` });
+  }
 
   const pdfBuffer = await pdfGenerator.generate(letterText, isHtml);
 
-  // Return as base64 inside JSON — avoids API Gateway binary encoding issues
   return {
     statusCode: 200,
     headers: corsHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({
-      pdf: pdfBuffer.toString('base64'),
-      filename: 'letter.pdf',
-    }),
+    body: JSON.stringify({ pdf: pdfBuffer.toString('base64'), filename: 'letter.pdf' }),
   };
+}
+
+// ── Route: POST /edit-letter ──────────────────────────────────────────────────
+
+async function editLetter(body) {
+  const { letterText, instruction } = body || {};
+
+  if (!letterText) return jsonResponse(400, { error: 'Missing required parameter: letterText' });
+  if (!instruction || !instruction.trim()) {
+    return jsonResponse(400, { error: 'Missing required parameter: instruction (e.g. "make it shorter")' });
+  }
+  if (letterText.length > MAX_TEXT_LENGTH) {
+    return jsonResponse(400, { error: `Letter text exceeds maximum length of ${MAX_TEXT_LENGTH} characters.` });
+  }
+  if (instruction.length > 500) {
+    return jsonResponse(400, { error: 'Instruction exceeds maximum length of 500 characters.' });
+  }
+
+  const cleanInstruction = sanitize(instruction);
+
+  const edited = await callLLM(
+    `You are a professional business writing expert. Edit the letter below according to the user's instruction.
+
+Rules:
+- Apply ONLY the requested change — do not alter anything else
+- Keep all original facts, names, dates, and details intact
+- Maintain proper business letter formatting
+- Return ONLY the edited letter text, no commentary`,
+    `Instruction: ${cleanInstruction}\n\nLetter:\n${letterText}`
+  );
+
+  if (!edited) {
+    return jsonResponse(503, { error: 'AI editing is currently unavailable. Please try again.' });
+  }
+
+  return jsonResponse(200, { letterText: edited });
 }
 
 // ── Route: POST /analyze-docx ─────────────────────────────────────────────────
@@ -132,28 +210,17 @@ function splitBuffer(buf, delimiter) {
 }
 
 async function analyzeDocx(event) {
-  // API Gateway may lowercase headers
   const headers = event.headers || {};
   const contentType = headers['content-type'] || headers['Content-Type'] || '';
-
-  // Extract boundary — handle quoted and unquoted forms
   const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^\s;]+))/);
   if (!boundaryMatch) {
-    console.error('Missing boundary. Content-Type:', contentType);
-    return jsonResponse(400, { error: 'Missing multipart boundary. Received Content-Type: ' + contentType });
+    return jsonResponse(400, { error: 'Missing multipart boundary. Content-Type: ' + contentType });
   }
 
   const boundaryStr = boundaryMatch[1] || boundaryMatch[2];
-
-  // API Gateway always base64-encodes binary bodies when binaryMediaTypes is set
-  let rawBuffer;
-  if (event.isBase64Encoded) {
-    rawBuffer = Buffer.from(event.body, 'base64');
-  } else {
-    rawBuffer = Buffer.from(event.body || '', 'binary');
-  }
-
-  console.log('Body length:', rawBuffer.length, 'isBase64Encoded:', event.isBase64Encoded, 'boundary:', boundaryStr);
+  const rawBuffer = event.isBase64Encoded
+    ? Buffer.from(event.body, 'base64')
+    : Buffer.from(event.body || '', 'binary');
 
   const boundary = Buffer.from('--' + boundaryStr);
   const parts = splitBuffer(rawBuffer, boundary);
@@ -164,18 +231,14 @@ async function analyzeDocx(event) {
     if (headerEnd === -1) continue;
     const headerStr = part.slice(0, headerEnd).toString('utf8');
     if (!headerStr.includes('filename=')) continue;
-    // Strip trailing \r\n from part
     const content = part.slice(headerEnd + 4);
     docxBuffer = content.slice(0, content.length - 2);
     break;
   }
 
   if (!docxBuffer || docxBuffer.length === 0) {
-    console.error('No docx found. Parts count:', parts.length);
-    return jsonResponse(400, { error: 'No .docx file found in upload. Parts found: ' + parts.length });
+    return jsonResponse(400, { error: 'No .docx file found in upload.' });
   }
-
-  console.log('docxBuffer size:', docxBuffer.length);
 
   let extractedText;
   try {
@@ -186,7 +249,7 @@ async function analyzeDocx(event) {
   }
 
   if (!extractedText) {
-    return jsonResponse(400, { error: 'The uploaded document appears to be empty' });
+    return jsonResponse(400, { error: 'The uploaded document appears to be empty.' });
   }
 
   const fields = await detectFields(extractedText);
@@ -197,16 +260,13 @@ async function analyzeDocx(event) {
 
 async function enhanceDocx(body) {
   const { extractedText, fields } = body || {};
-  if (!extractedText) {
-    return jsonResponse(400, { error: 'Missing extractedText' });
-  }
+  if (!extractedText) return jsonResponse(400, { error: 'Missing extractedText' });
 
   const enhanced = await enhanceWithFields(extractedText, fields || {});
   const letterText = enhanced || extractedText;
   const llmEnhanced = enhanced !== null;
-  const isHtml = llmEnhanced;
 
-  return jsonResponse(200, { letterText, llmEnhanced, isHtml });
+  return jsonResponse(200, { letterText, llmEnhanced, isHtml: llmEnhanced });
 }
 
 // ── AI helpers ────────────────────────────────────────────────────────────────
@@ -214,7 +274,6 @@ async function enhanceDocx(body) {
 async function callLLM(systemPrompt, userPrompt) {
   const provider = (process.env.LLM_PROVIDER || 'gemini').toLowerCase();
   if (['none', 'off', 'disabled'].includes(provider)) return null;
-
   if (provider === 'groq') {
     return (await callGroq(systemPrompt, userPrompt)) ?? (await callGemini(systemPrompt, userPrompt));
   }
@@ -268,29 +327,14 @@ async function callGroq(systemPrompt, userPrompt) {
 
 async function detectFields(letterText) {
   const result = await callLLM(
-    `You are a document analyzer. Identify all placeholder tokens in this letter template that need to be filled in by the user.
-
-Placeholders are typically written as [PLACEHOLDER NAME] or [YOUR SOMETHING] or similar bracket-style tokens.
-
-Return ONLY a JSON array with no explanation:
-[{ "key": "snake_case_key", "label": "Human Readable Label", "required": true }]
-
-Map each placeholder to a key and label. Examples:
-- [DATE] → { "key": "date", "label": "Date", "required": true }
-- [RECIPIENT NAME] → { "key": "recipient_name", "label": "Recipient Name", "required": true }
-- [YOUR COMPANY NAME] → { "key": "company_name", "label": "Company Name", "required": true }
-- [AREA/PLACE] → { "key": "area_place", "label": "Area / Place", "required": true }
-- [REASON] → { "key": "reason", "label": "Reason for Transfer", "required": true }
-- [YOUR EMAIL ID] → { "key": "email", "label": "Email Address", "required": true }
-- [YOUR PHONE NUMBER] → { "key": "phone", "label": "Phone Number", "required": true }
-- [YOUR SIGNATURE] → { "key": "signature", "label": "Your Signature", "required": false }
-- [YOUR NAME] → { "key": "your_name", "label": "Your Name", "required": true }`,
+    `You are a document analyzer. Identify all placeholder tokens in this letter template.
+Placeholders are written as [PLACEHOLDER NAME] or [YOUR SOMETHING].
+Return ONLY a JSON array, no explanation:
+[{ "key": "snake_case_key", "label": "Human Readable Label", "required": true }]`,
     `Letter template:\n${letterText}`
   );
   if (!result) return [];
   try {
-    const match = result.match(/\[[\s\S]*?\]/g);
-    // Find the JSON array specifically (not the bracket placeholders)
     const jsonMatch = result.match(/\[\s*\{[\s\S]*\}\s*\]/);
     return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
   } catch {
@@ -302,15 +346,13 @@ async function enhanceWithFields(letterText, fields) {
   const fieldLines = Object.entries(fields).map(([k, v]) => `- ${k}: ${v}`).join('\n');
   return callLLM(
     `You are a document assistant. Your ONLY job is to fill in the placeholder values in the letter template.
-
 STRICT RULES:
 - Do NOT rewrite, rephrase, or change ANY part of the letter
-- Do NOT add or remove any sentences, paragraphs, or words
-- ONLY replace the placeholder tokens (e.g. [DATE], [RECIPIENT NAME], [YOUR COMPANY NAME], [AREA/PLACE], [REASON], [YOUR EMAIL ID], [YOUR PHONE NUMBER], [YOUR SIGNATURE], [YOUR NAME]) with the user-provided values
-- Keep ALL original formatting, punctuation, capitalization, and structure exactly as-is
-- If a placeholder has no matching user value, leave it as-is
-- Return the complete letter with ONLY the placeholders replaced — nothing else changed`,
-    `User-provided values:\n${fieldLines || '(none provided)'}\n\nLetter template (fill placeholders only):\n${letterText}`
+- ONLY replace placeholder tokens like [DATE], [RECIPIENT NAME], etc. with user-provided values
+- Keep ALL original formatting exactly as-is
+- If a placeholder has no matching value, leave it as-is
+- Return the complete letter with ONLY the placeholders replaced`,
+    `User-provided values:\n${fieldLines || '(none provided)'}\n\nLetter template:\n${letterText}`
   );
 }
 
@@ -325,11 +367,13 @@ exports.handler = async (event) => {
   }
 
   try {
-    if (method === 'GET' && path === '/letter-types') return listLetterTypes();
-    if (method === 'POST' && path === '/generate') return await generateLetter(parseBody(event));
-    if (method === 'POST' && path === '/download-pdf') return await downloadPdf(parseBody(event));
-    if (method === 'POST' && path === '/analyze-docx') return await analyzeDocx(event);
-    if (method === 'POST' && path === '/enhance-docx') return await enhanceDocx(parseBody(event));
+    if (method === 'GET'  && path === '/letter-types')  return listLetterTypes();
+    if (method === 'GET'  && path === '/letters')        return await listLetters();
+    if (method === 'POST' && path === '/generate')       return await generateLetter(parseBody(event));
+    if (method === 'POST' && path === '/download-pdf')   return await downloadPdf(parseBody(event));
+    if (method === 'POST' && path === '/edit-letter')    return await editLetter(parseBody(event));
+    if (method === 'POST' && path === '/analyze-docx')   return await analyzeDocx(event);
+    if (method === 'POST' && path === '/enhance-docx')   return await enhanceDocx(parseBody(event));
 
     return jsonResponse(404, { error: `Route not found: ${method} ${path}` });
   } catch (err) {
@@ -338,7 +382,6 @@ exports.handler = async (event) => {
   }
 };
 
-// Named exports for local server and tests
 module.exports.listLetterTypes = listLetterTypes;
 module.exports.generateLetter = generateLetter;
 module.exports.downloadPdf = downloadPdf;
