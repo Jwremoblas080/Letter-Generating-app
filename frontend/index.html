@@ -13,24 +13,58 @@
       <p class="subtitle">Create polished, AI-enhanced business letters in seconds</p>
     </header>
 
+    <!-- Step Indicator -->
+    <div class="step-indicator">
+      <div class="step active" id="step-1">
+        <div class="step-circle">1</div>
+        <span class="step-label">Choose Method</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" id="step-2">
+        <div class="step-circle">2</div>
+        <span class="step-label">Fill Details</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" id="step-3">
+        <div class="step-circle">3</div>
+        <span class="step-label">Preview & Download</span>
+      </div>
+    </div>
+
     <main class="main-content">
       <!-- Upload Section -->
       <section class="card upload-card">
         <div class="card-header">
           <h2>📄 Upload Your Document</h2>
-          <p>Upload a .docx file and let AI analyze and enhance it</p>
+          <p>Upload a .docx file and let AI analyze and fill in the placeholders</p>
         </div>
-        <div class="upload-area">
-          <input type="file" id="docx-upload" accept=".docx" />
-          <button id="analyze-btn" type="button" class="btn btn-primary">
+
+        <!-- Drag & Drop Zone -->
+        <div class="drop-zone" id="drop-zone">
+          <div class="drop-zone-idle" id="drop-zone-idle">
+            <div class="drop-zone-icon">📂</div>
+            <p class="drop-zone-title">Drag & drop your .docx file here</p>
+            <p class="drop-zone-sub">or click to browse</p>
+            <input type="file" id="docx-upload" accept=".docx" />
+          </div>
+          <div class="drop-zone-selected" id="drop-zone-selected" style="display:none">
+            <div class="file-info">
+              <span class="file-icon">📄</span>
+              <span class="file-name" id="file-name-display"></span>
+              <button class="file-remove-btn" id="file-remove-btn" title="Remove file">✕</button>
+            </div>
+            <p class="file-ready">Ready to analyze</p>
+          </div>
+        </div>
+
+        <div class="upload-actions">
+          <button id="analyze-btn" type="button" class="btn btn-primary" disabled>
             <span class="btn-icon">🔍</span> Analyze Document
           </button>
         </div>
       </section>
 
-      <div class="divider">
-        <span>or</span>
-      </div>
+      <div class="divider"><span>or</span></div>
 
       <!-- Template Section -->
       <section class="card template-card">
@@ -63,7 +97,7 @@
             <span class="btn-icon">📋</span> Copy
           </button>
           <button id="download-btn" type="button" class="btn btn-outline">
-            <span class="btn-icon">⬇️</span> Download PDF
+            <span class="btn-icon">⬇️</span> <span id="download-btn-text">Download PDF</span>
           </button>
           <button id="regenerate-btn" type="button" class="btn btn-outline">
             <span class="btn-icon">🔄</span> Regenerate
@@ -78,13 +112,19 @@
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay" style="display:none">
       <div class="loading-spinner"></div>
-      <p class="loading-text">Processing your request...</p>
+      <p class="loading-text" id="loading-text">Processing your request...</p>
     </div>
 
     <!-- Error Toast -->
     <div id="error-toast" class="toast toast-error" style="display:none">
       <span class="toast-icon">❌</span>
       <span id="error-msg"></span>
+    </div>
+
+    <!-- Success Toast -->
+    <div id="success-toast" class="toast toast-success" style="display:none">
+      <span class="toast-icon">✅</span>
+      <span id="success-msg"></span>
     </div>
   </div>
 

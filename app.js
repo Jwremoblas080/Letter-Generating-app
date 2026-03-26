@@ -19,6 +19,11 @@ const formContainer = document.getElementById('form-container');
 const submitBtn = document.getElementById('submit-btn');
 const modalTitle = document.getElementById('modal-title');
 
+const dropZone = document.getElementById('drop-zone');
+const dropZoneIdle = document.getElementById('drop-zone-idle');
+const dropZoneSelected = document.getElementById('drop-zone-selected');
+const fileNameDisplay = document.getElementById('file-name-display');
+const fileRemoveBtn = document.getElementById('file-remove-btn');
 const docxUpload = document.getElementById('docx-upload');
 const analyzeBtn = document.getElementById('analyze-btn');
 const docxModal = document.getElementById('docx-modal');
@@ -31,16 +36,43 @@ const previewSection = document.getElementById('preview-section');
 const previewText = document.getElementById('preview-text');
 const copyBtn = document.getElementById('copy-btn');
 const downloadBtn = document.getElementById('download-btn');
+const downloadBtnText = document.getElementById('download-btn-text');
 const regenerateBtn = document.getElementById('regenerate-btn');
 const copyConfirmation = document.getElementById('copy-confirmation');
 const llmNotice = document.getElementById('llm-notice');
 
 const loadingOverlay = document.getElementById('loading-overlay');
+const loadingText = document.getElementById('loading-text');
 const errorToast = document.getElementById('error-toast');
 const errorMsg = document.getElementById('error-msg');
+const successToast = document.getElementById('success-toast');
+const successMsg = document.getElementById('success-msg');
+
+// ── Step Indicator ────────────────────────────────────────────────────────────
+function setStep(step) {
+  const steps = [
+    document.getElementById('step-1'),
+    document.getElementById('step-2'),
+    document.getElementById('step-3'),
+  ];
+  const lines = document.querySelectorAll('.step-line');
+
+  steps.forEach((el, i) => {
+    el.classList.remove('active', 'completed');
+    if (i + 1 < step) el.classList.add('completed');
+    else if (i + 1 === step) el.classList.add('active');
+  });
+
+  lines.forEach((line, i) => {
+    line.classList.toggle('completed', i + 1 < step);
+  });
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function showLoading() { loadingOverlay.style.display = 'flex'; }
+function showLoading(msg = 'Processing your request...') {
+  loadingText.textContent = msg;
+  loadingOverlay.style.display = 'flex';
+}
 function hideLoading() { loadingOverlay.style.display = 'none'; }
 
 function showError(msg) {
@@ -49,11 +81,16 @@ function showError(msg) {
   setTimeout(() => { errorToast.style.display = 'none'; }, 5000);
 }
 
+function showSuccess(msg) {
+  successMsg.textContent = msg;
+  successToast.style.display = 'flex';
+  setTimeout(() => { successToast.style.display = 'none'; }, 3500);
+}
+
 function openModal(modal) { modal.style.display = 'flex'; }
 function closeModal(modal) { modal.style.display = 'none'; }
 
 function displayPreview(letterContent, llmEnhanced, isHtml = false) {
-  // Store original content (HTML or plain text) for PDF generation
   currentLetterText = letterContent;
   currentLetterIsHtml = isHtml;
 
@@ -68,7 +105,60 @@ function displayPreview(letterContent, llmEnhanced, isHtml = false) {
   llmNotice.style.display = llmEnhanced === false ? '' : 'none';
   previewSection.style.display = '';
   previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setStep(3);
+  showSuccess(llmEnhanced ? '✨ Letter generated with AI enhancement!' : '📄 Letter generated from template.');
 }
+
+// ── Drag & Drop Upload Zone ───────────────────────────────────────────────────
+function setFileSelected(file) {
+  if (!file) return;
+  fileNameDisplay.textContent = file.name;
+  dropZoneIdle.style.display = 'none';
+  dropZoneSelected.style.display = 'flex';
+  analyzeBtn.disabled = false;
+}
+
+function clearFileSelection() {
+  docxUpload.value = '';
+  dropZoneIdle.style.display = 'block';
+  dropZoneSelected.style.display = 'none';
+  analyzeBtn.disabled = true;
+}
+
+docxUpload.addEventListener('change', () => {
+  if (docxUpload.files[0]) setFileSelected(docxUpload.files[0]);
+});
+
+fileRemoveBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  clearFileSelection();
+});
+
+// Drag events
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+});
+
+dropZone.addEventListener('dragleave', () => {
+  dropZone.classList.remove('drag-over');
+});
+
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  if (!file.name.endsWith('.docx')) {
+    showError('Only .docx files are supported.');
+    return;
+  }
+  // Assign to file input
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  docxUpload.files = dt.files;
+  setFileSelected(file);
+});
 
 // ── Load Letter Types ─────────────────────────────────────────────────────────
 async function loadLetterTypes() {
@@ -102,6 +192,7 @@ openFormBtn.addEventListener('click', () => {
 
   modalTitle.textContent = `Fill ${lt.displayName} Details`;
   formContainer.innerHTML = '';
+  setStep(2);
 
   lt.fields.forEach(field => {
     const div = document.createElement('div');
@@ -207,7 +298,7 @@ submitBtn.addEventListener('click', async () => {
   }
 
   closeModal(formModal);
-  showLoading();
+  showLoading('✨ Generating your letter...');
 
   try {
     const res = await fetch(`${API_BASE}/generate`, {
@@ -233,7 +324,8 @@ analyzeBtn.addEventListener('click', async () => {
   if (!file) { showError('Please select a .docx file first.'); return; }
   if (!file.name.endsWith('.docx')) { showError('Only .docx files are supported.'); return; }
 
-  showLoading();
+  setStep(2);
+  showLoading('🔍 Analyzing your document...');
 
   try {
     const formData = new FormData();
@@ -347,7 +439,7 @@ enhanceBtn.addEventListener('click', async () => {
   });
 
   closeModal(docxModal);
-  showLoading();
+  showLoading('✨ Generating enhanced letter...');
 
   try {
     const res = await fetch(`${API_BASE}/enhance-docx`, {
@@ -362,6 +454,7 @@ enhanceBtn.addEventListener('click', async () => {
     lastGenerateContext = { type: 'docx', extractedText: docxExtractedText, fields };
     docxUpload.value = '';
     docxExtractedText = '';
+    clearFileSelection();
   } catch (err) {
     showError('Network error: ' + err.message);
   } finally {
@@ -373,7 +466,7 @@ enhanceBtn.addEventListener('click', async () => {
 regenerateBtn.addEventListener('click', async () => {
   if (!lastGenerateContext) return;
 
-  showLoading();
+  showLoading('🔄 Regenerating your letter...');
 
   try {
     if (lastGenerateContext.type === 'template') {
@@ -418,7 +511,9 @@ copyBtn.addEventListener('click', async () => {
 
 downloadBtn.addEventListener('click', async () => {
   try {
-    showLoading();
+    downloadBtnText.textContent = 'Generating PDF...';
+    downloadBtn.disabled = true;
+    showLoading('📄 Generating your PDF...');
     const res = await fetch(`${API_BASE}/download-pdf`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -440,12 +535,16 @@ downloadBtn.addEventListener('click', async () => {
     a.download = data.filename || 'letter.pdf';
     a.click();
     URL.revokeObjectURL(url);
+    showSuccess('📥 PDF downloaded successfully!');
   } catch (err) {
     showError('Network error: ' + err.message);
   } finally {
     hideLoading();
+    downloadBtnText.textContent = 'Download PDF';
+    downloadBtn.disabled = false;
   }
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+setStep(1);
 loadLetterTypes();
