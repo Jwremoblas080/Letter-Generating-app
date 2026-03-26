@@ -268,15 +268,31 @@ async function callGroq(systemPrompt, userPrompt) {
 
 async function detectFields(letterText) {
   const result = await callLLM(
-    `Analyze this letter and identify all fields a user needs to fill in.
-Return ONLY a JSON array, no explanation:
-[{ "key": "snake_case_key", "label": "Human Readable Label", "required": true }]`,
-    `Letter:\n${letterText}`
+    `You are a document analyzer. Identify all placeholder tokens in this letter template that need to be filled in by the user.
+
+Placeholders are typically written as [PLACEHOLDER NAME] or [YOUR SOMETHING] or similar bracket-style tokens.
+
+Return ONLY a JSON array with no explanation:
+[{ "key": "snake_case_key", "label": "Human Readable Label", "required": true }]
+
+Map each placeholder to a key and label. Examples:
+- [DATE] → { "key": "date", "label": "Date", "required": true }
+- [RECIPIENT NAME] → { "key": "recipient_name", "label": "Recipient Name", "required": true }
+- [YOUR COMPANY NAME] → { "key": "company_name", "label": "Company Name", "required": true }
+- [AREA/PLACE] → { "key": "area_place", "label": "Area / Place", "required": true }
+- [REASON] → { "key": "reason", "label": "Reason for Transfer", "required": true }
+- [YOUR EMAIL ID] → { "key": "email", "label": "Email Address", "required": true }
+- [YOUR PHONE NUMBER] → { "key": "phone", "label": "Phone Number", "required": true }
+- [YOUR SIGNATURE] → { "key": "signature", "label": "Your Signature", "required": false }
+- [YOUR NAME] → { "key": "your_name", "label": "Your Name", "required": true }`,
+    `Letter template:\n${letterText}`
   );
   if (!result) return [];
   try {
-    const match = result.match(/\[[\s\S]*\]/);
-    return match ? JSON.parse(match[0]) : [];
+    const match = result.match(/\[[\s\S]*?\]/g);
+    // Find the JSON array specifically (not the bracket placeholders)
+    const jsonMatch = result.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
   } catch {
     return [];
   }
@@ -285,15 +301,16 @@ Return ONLY a JSON array, no explanation:
 async function enhanceWithFields(letterText, fields) {
   const fieldLines = Object.entries(fields).map(([k, v]) => `- ${k}: ${v}`).join('\n');
   return callLLM(
-    `You are a professional business writing expert. Produce a complete, polished letter.
-Rules:
-- Incorporate ALL user-provided information naturally
-- Use formal business letter tone
-- Preserve formatting: use <strong> for important terms, names, dates
-- Return clean HTML using only: <p>, <strong>, <em>, <br>, <ul>, <li>
-- Do NOT include <html>, <head>, <body> tags
-- Return ONLY the HTML letter content`,
-    `User-provided information:\n${fieldLines || '(none)'}\n\nLetter template:\n${letterText}`
+    `You are a document assistant. Your ONLY job is to fill in the placeholder values in the letter template.
+
+STRICT RULES:
+- Do NOT rewrite, rephrase, or change ANY part of the letter
+- Do NOT add or remove any sentences, paragraphs, or words
+- ONLY replace the placeholder tokens (e.g. [DATE], [RECIPIENT NAME], [YOUR COMPANY NAME], [AREA/PLACE], [REASON], [YOUR EMAIL ID], [YOUR PHONE NUMBER], [YOUR SIGNATURE], [YOUR NAME]) with the user-provided values
+- Keep ALL original formatting, punctuation, capitalization, and structure exactly as-is
+- If a placeholder has no matching user value, leave it as-is
+- Return the complete letter with ONLY the placeholders replaced — nothing else changed`,
+    `User-provided values:\n${fieldLines || '(none provided)'}\n\nLetter template (fill placeholders only):\n${letterText}`
   );
 }
 
