@@ -9,7 +9,7 @@ const templates = [
   {
     id: 'event-hosting-request',
     displayName: 'Event Hosting Request',
-    docxFile: path.join(__dirname, 'docx', 'event_-osting-request.docx'),
+    docxFile: path.join(__dirname, 'docx', 'Event_-osting-Request-Letter.docx'),
     fields: [
       { key: 'institution_name',      label: 'Institution Name',           required: true  },
       { key: 'facility_name',         label: 'Facility Name',              required: true  },
@@ -27,7 +27,7 @@ const templates = [
   {
     id: 'support-request-letter',
     displayName: 'Support Request Letter',
-    docxFile: path.join(__dirname, 'docx', 'support-request-letter.docx'),
+    docxFile: path.join(__dirname, 'docx', 'Support-Request-Letter.docx'),
     fields: [
       { key: 'institution_name',   label: 'Institution Name (DICT/DOST/LGU/etc.)', required: true  },
       { key: 'project_name',       label: 'Project / Event Name',                  required: true  },
