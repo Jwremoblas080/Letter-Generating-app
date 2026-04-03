@@ -321,15 +321,13 @@ async function analyzeDocx(event) {
 // ── Route: POST /fill-docx ────────────────────────────────────────────────────
 // Takes the original .docx (base64) + user-filled fields.
 // Fills placeholders using docxtemplater — ZERO AI rewriting, preserves all formatting.
-// Returns: { letterText, docx (base64) }
 
 async function fillDocx(body) {
   const { docxBase64, fields = {} } = body || {};
 
-  if (!docxBase64) return jsonResponse(400, { error: 'Missing docxBase64' });
+  if (!docxBase64) return jsonResponse(400, { error: 'Missing docxBase64 — please re-upload your document.' });
 
   const docxBuffer = Buffer.from(docxBase64, 'base64');
-
   const validation = validateFields(fields);
   const sanitizedFields = validation.fields;
 
@@ -351,10 +349,34 @@ async function fillDocx(body) {
 }
 
 // ── Route: POST /enhance-docx (legacy — kept for backward compat) ─────────────
+// If docxBase64 is present, use fill-docx pipeline.
+// If only extractedText is present (old flow), do a simple text substitution.
 
 async function enhanceDocx(body) {
-  // Redirect to fillDocx — no AI rewriting
-  return fillDocx(body);
+  const { docxBase64, extractedText, fields = {} } = body || {};
+
+  // New flow — has the original docx
+  if (docxBase64) {
+    return fillDocx(body);
+  }
+
+  // Legacy fallback — no docx, just plain text substitution (no AI rewriting)
+  if (!extractedText) return jsonResponse(400, { error: 'Missing extractedText or docxBase64' });
+
+  const validation = validateFields(fields);
+  const sanitizedFields = validation.fields;
+
+  // Simple find-and-replace on the plain text — no AI
+  let letterText = extractedText;
+  for (const [key, value] of Object.entries(sanitizedFields)) {
+    const patterns = [
+      new RegExp(`\\{${key}\\}`, 'gi'),
+      new RegExp(`\\[${key.replace(/_/g, '[_ ]')}\\]`, 'gi'),
+    ];
+    patterns.forEach(p => { letterText = letterText.replace(p, value); });
+  }
+
+  return jsonResponse(200, { letterText, llmEnhanced: false, isHtml: false });
 }
 
 // ── AI helpers ────────────────────────────────────────────────────────────────
