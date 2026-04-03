@@ -9,7 +9,7 @@ const templates = [
   {
     id: 'event-hosting-request',
     displayName: 'Event Hosting Request',
-    docxFile: path.join(__dirname, 'docx', 'event-hosting-request.docx'),
+    docxFile: path.join(__dirname, 'docx', 'event_-osting-request.docx'),
     fields: [
       { key: 'institution_name',      label: 'Institution Name',           required: true  },
       { key: 'facility_name',         label: 'Facility Name',              required: true  },
