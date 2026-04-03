@@ -6,8 +6,10 @@ const API_BASE = 'https://cbgis9lan3.execute-api.us-east-1.amazonaws.com/dev';
 let letterTypes = [];
 let currentLetterText = '';
 let currentLetterIsHtml = false;
+let currentDocxBase64 = null;
 let lastGenerateContext = null;
 let docxExtractedText = '';
+let uploadedDocxBase64 = null;
 
 // ── DOM Elements ──────────────────────────────────────────────────────────────
 const letterTypeSelect = document.getElementById('letter-type-select');
@@ -39,6 +41,7 @@ const editBtn = document.getElementById('edit-btn');
 const copyBtn = document.getElementById('copy-btn');
 const downloadBtn = document.getElementById('download-btn');
 const downloadBtnText = document.getElementById('download-btn-text');
+const downloadDocxBtn = document.getElementById('download-docx-btn');
 const regenerateBtn = document.getElementById('regenerate-btn');
 const copyConfirmation = document.getElementById('copy-confirmation');
 const llmNotice = document.getElementById('llm-notice');
@@ -99,19 +102,20 @@ function showSuccess(msg) {
 function openModal(modal) { modal.style.display = 'flex'; }
 function closeModal(modal) { modal.style.display = 'none'; }
 
-function displayPreview(letterContent, llmEnhanced, isHtml = false) {
-  currentLetterText = letterContent;
-  currentLetterIsHtml = isHtml;
+function displayPreview(letterContent, llmEnhanced, isHtml = false, docxBase64 = null) {
+  currentLetterText    = letterContent;
+  currentLetterIsHtml  = isHtml;
+  currentDocxBase64    = docxBase64;
   if (isHtml) { previewText.innerHTML = letterContent; previewText.classList.remove('plain'); }
-  else { previewText.textContent = letterContent; previewText.classList.add('plain'); }
+  else        { previewText.textContent = letterContent; previewText.classList.add('plain'); }
   llmNotice.style.display = llmEnhanced === false ? '' : 'none';
   previewSection.style.display = '';
-  if (emptyState) emptyState.style.display = 'none';
+  if (emptyState)      emptyState.style.display      = 'none';
   if (mobileActionBar) mobileActionBar.style.display = 'flex';
+  if (downloadDocxBtn) downloadDocxBtn.style.display = docxBase64 ? '' : 'none';
   previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   setStep(3);
-  showSuccess(llmEnhanced ? '✨ Letter generated with AI enhancement!' : '📄 Letter generated from template.');
-  loadHistory();
+  showSuccess(llmEnhanced ? '✨ Letter generated with AI enhancement!' : '📄 Letter generated successfully.');
 }
 
 // ── Edit Letter ───────────────────────────────────────────────────────────────
@@ -358,7 +362,7 @@ submitBtn.addEventListener('click', async () => {
     const data = await res.json();
     if (!res.ok) { showError(data.error || 'Generation failed.'); return; }
 
-    displayPreview(data.letterText, data.llmEnhanced, false);
+    displayPreview(data.letterText, data.llmEnhanced, false, data.docx || null);
     lastGenerateContext = { type: 'template', letterTypeId, fields };
   } catch (err) {
     showError('Network error: ' + err.message);
@@ -384,7 +388,8 @@ analyzeBtn.addEventListener('click', async () => {
     const data = await res.json();
     if (!res.ok) { showError(data.error || 'Analysis failed.'); return; }
 
-    docxExtractedText = data.extractedText;
+    docxExtractedText  = data.extractedText || data.plainText || '';
+    uploadedDocxBase64 = data.docxBase64 || null;
     docxFields.innerHTML = '';
 
     const fields = data.fields || [];
@@ -479,7 +484,7 @@ closeDocxModalBtn.addEventListener('click', () => closeModal(docxModal));
 cancelDocxBtn.addEventListener('click', () => closeModal(docxModal));
 
 enhanceBtn.addEventListener('click', async () => {
-  if (!docxExtractedText) { showError('Please analyze a document first.'); return; }
+  if (!docxExtractedText && !uploadedDocxBase64) { showError('Please analyze a document first.'); return; }
 
   const inputs = docxFields.querySelectorAll('input[name], textarea[name]');
   const fields = {};
@@ -488,21 +493,31 @@ enhanceBtn.addEventListener('click', async () => {
   });
 
   closeModal(docxModal);
-  showLoading('✨ Generating enhanced letter...');
+  showLoading('📄 Filling your document...');
 
   try {
-    const res = await fetch(`${API_BASE}/enhance-docx`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ extractedText: docxExtractedText, fields }),
-    });
-    const data = await res.json();
-    if (!res.ok) { showError(data.error || 'Enhancement failed.'); return; }
+    let res, data;
+    if (uploadedDocxBase64) {
+      res = await fetch(`${API_BASE}/fill-docx`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ docxBase64: uploadedDocxBase64, fields }),
+      });
+    } else {
+      res = await fetch(`${API_BASE}/enhance-docx`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ extractedText: docxExtractedText, fields }),
+      });
+    }
+    data = await res.json();
+    if (!res.ok) { showError(data.error || 'Failed to fill document.'); return; }
 
-    displayPreview(data.letterText, data.llmEnhanced, data.isHtml === true);
-    lastGenerateContext = { type: 'docx', extractedText: docxExtractedText, fields };
+    displayPreview(data.letterText, false, false, data.docx || null);
+    lastGenerateContext = { type: 'docx', docxBase64: uploadedDocxBase64, extractedText: docxExtractedText, fields };
     docxUpload.value = '';
     docxExtractedText = '';
+    uploadedDocxBase64 = null;
     clearFileSelection();
   } catch (err) {
     showError('Network error: ' + err.message);
@@ -593,6 +608,28 @@ downloadBtn.addEventListener('click', async () => {
     downloadBtn.disabled = false;
   }
 });
+
+// ── Download DOCX ─────────────────────────────────────────────────────────────
+if (downloadDocxBtn) {
+  downloadDocxBtn.addEventListener('click', () => {
+    if (!currentDocxBase64) { showError('No .docx available for this letter.'); return; }
+    try {
+      const binary = atob(currentDocxBase64);
+      const bytes  = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'letter.docx';
+      a.click();
+      URL.revokeObjectURL(url);
+      showSuccess('📥 DOCX downloaded successfully!');
+    } catch (err) {
+      showError('Failed to download DOCX: ' + err.message);
+    }
+  });
+}
 
 // ── Dark Mode ─────────────────────────────────────────────────────────────────
 const themeToggle = document.getElementById('theme-toggle');
