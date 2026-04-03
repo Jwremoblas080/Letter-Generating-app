@@ -165,9 +165,20 @@ async function generateLetter(body) {
   }
 
   // Check if .docx template file exists
-  if (!letterType.docxFile || !fs.existsSync(letterType.docxFile)) {
+  const docxPath = letterType.docxFile;
+  console.log(`[generate] Looking for template at: ${docxPath}`);
+  console.log(`[generate] File exists: ${fs.existsSync(docxPath)}`);
+
+  if (!docxPath || !fs.existsSync(docxPath)) {
+    // List what's actually in the templates/docx dir for debugging
+    try {
+      const docxDir = require('path').join(__dirname, 'templates', 'docx');
+      const files = fs.existsSync(docxDir) ? fs.readdirSync(docxDir) : [];
+      console.error(`[generate] docx dir contents: ${JSON.stringify(files)}`);
+    } catch (e) { /* ignore */ }
+
     return jsonResponse(503, {
-      error: `Template file not found for "${letterType.displayName}". Please upload the .docx template file.`,
+      error: `Template file not found for "${letterType.displayName}". Expected: ${docxPath}`,
     });
   }
 
