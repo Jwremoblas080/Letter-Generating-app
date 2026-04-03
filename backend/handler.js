@@ -164,28 +164,20 @@ async function generateLetter(body) {
     });
   }
 
-  // Check if .docx template file exists
-  const docxPath = letterType.docxFile;
-  console.log(`[generate] Looking for template at: ${docxPath}`);
-  console.log(`[generate] File exists: ${fs.existsSync(docxPath)}`);
+  // Get the .docx template buffer (embedded or from disk)
+  const docxBuffer = letterType.docxBuffer;
+  console.log(`[generate] docxBuffer available: ${!!docxBuffer}`);
 
-  if (!docxPath || !fs.existsSync(docxPath)) {
-    // List what's actually in the templates/docx dir for debugging
-    try {
-      const docxDir = require('path').join(__dirname, 'templates', 'docx');
-      const files = fs.existsSync(docxDir) ? fs.readdirSync(docxDir) : [];
-      console.error(`[generate] docx dir contents: ${JSON.stringify(files)}`);
-    } catch (e) { /* ignore */ }
-
+  if (!docxBuffer) {
     return jsonResponse(503, {
-      error: `Template file not found for "${letterType.displayName}". Expected: ${docxPath}`,
+      error: `Template file not found for "${letterType.displayName}". Please add the .docx file to backend/templates/docx/.`,
     });
   }
 
   // Fill the .docx template — preserves ALL formatting, fonts, layout
   let filledDocxBuffer;
   try {
-    filledDocxBuffer = docxProc.fillDocx(letterType.docxFile, sanitizedFields);
+    filledDocxBuffer = docxProc.fillDocx(docxBuffer, sanitizedFields);
   } catch (err) {
     console.error('docxtemplater error:', err.message);
     return jsonResponse(500, { error: 'Failed to fill template: ' + err.message });
@@ -236,7 +228,7 @@ async function downloadDocx(body) {
   }
 
   const letterType = registry.getById(letterTypeId);
-  if (!letterType || !letterType.docxFile || !fs.existsSync(letterType.docxFile)) {
+  if (!letterType || !letterType.docxBuffer) {
     return jsonResponse(404, { error: 'Template file not found' });
   }
 
@@ -244,7 +236,7 @@ async function downloadDocx(body) {
   const sanitizedFields = validation.fields;
 
   try {
-    const filledDocx = docxProc.fillDocx(letterType.docxFile, sanitizedFields);
+    const filledDocx = docxProc.fillDocx(letterType.docxBuffer, sanitizedFields);
     return jsonResponse(200, {
       docx: filledDocx.toString('base64'),
       filename: `${letterTypeId}.docx`,
