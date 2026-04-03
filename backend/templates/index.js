@@ -29,7 +29,7 @@ const templates = [
   {
     id: 'event-hosting-request',
     displayName: 'Event Hosting Request',
-    get docxBuffer() { return loadDocx('Event_-osting-Request-Letter.docx', b64.event); },
+    get docxBuffer() { return loadDocx('Event-Hosting-Request.docx', b64.event); },
     fields: [
       { key: 'institution_name',      label: 'Institution Name',           required: true  },
       { key: 'facility_name',         label: 'Facility Name',              required: true  },
