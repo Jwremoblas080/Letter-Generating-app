@@ -26,13 +26,9 @@ AI-powered business letter generator with .docx template support, deployed on AW
 
 ## Key Features
 
-### 1. Built-in Letter Templates (6 types)
+### 1. Built-in Letter Templates (2 types)
 - Event Hosting Request
 - Support Request Letter
-- Resignation Letter
-- Recommendation Letter
-- Complaint Letter
-- Job Application Letter
 
 ### 2. Custom Document Upload
 - Upload your own .docx files
@@ -198,12 +194,7 @@ npx serverless deploy
 ## Future Enhancements
 
 ### Planned Features
-1. Add 4 more built-in templates:
-   - Resignation Letter
-   - Recommendation Letter
-   - Complaint Letter
-   - Job Application Letter
-
+1. Add more built-in templates (as needed by users)
 2. User authentication & history
 3. Template marketplace
 4. Multi-language support
